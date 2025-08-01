@@ -4,7 +4,9 @@ A green, aesthetic Flutter productivity app that helps you stay focused and grow
 It’s a blend of task management and Pomodoro-style timers — with gamification built in.
 
 Author: Maha Ibrahim
+
 Email: Maha.Ibrahim@stud.srh-campus-berlin.de 
+       
        mahasherif2604@gmail.com
 
 ---
