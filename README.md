@@ -43,10 +43,10 @@ git clone https://github.com/mahaibrahim26/FocusApp.git
 
 cd practice
 
-2. Install dependencies
+### 2. Install dependencies
 flutter pub get
 
-3. Run the app
+### 3. Run the app
 flutter run
 
 For iOS: Open ios/Runner.xcworkspace in Xcode, select your team, connect your iPhone, and run it.
