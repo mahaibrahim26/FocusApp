@@ -62,6 +62,7 @@ For iOS: Open ios/Runner.xcworkspace in Xcode, select your team, connect your iP
 ### Font & Assets Setup
 
 In pubspec.yaml:
+
 flutter:
     fonts:
     - family: Playfair
