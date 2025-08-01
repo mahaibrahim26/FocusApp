@@ -66,7 +66,7 @@ flutter:
         - assets/images/seed4.png
         - assets/images/seed5.png
 
-🚀 Future Ideas
+### Future Ideas
 Focus streak tracking
 
 Notifications when timer ends
@@ -76,3 +76,4 @@ Sync with Google Calendar
 Made with Flutter
 By @mahaibrahim26
 
+![FocusTree Logo](assets/images/logo.PNG) 
