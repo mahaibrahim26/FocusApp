@@ -44,7 +44,7 @@ Edit
 
 ### 1. Clone the repo
 
-```bash
+bash
 git clone https://github.com/mahaibrahim26/FocusTreeApp.git
 cd FocusTreeApp
 2. Install dependencies
