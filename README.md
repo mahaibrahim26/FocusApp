@@ -40,9 +40,12 @@ fonts/ # PlayfairDisplay-Black.ttf
 ### 1. Clone the repo
 
 git clone https://github.com/mahaibrahim26/FocusApp.git
+
 cd practice
+
 2. Install dependencies
 flutter pub get
+
 3. Run the app
 flutter run
 
