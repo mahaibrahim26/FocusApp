@@ -3,7 +3,7 @@
 A green, aesthetic Flutter productivity app that helps you stay focused and grow a virtual tree as you work.  
 It’s a blend of task management and Pomodoro-style timers — with gamification built in.
 
-Author: Maha Ibrahim
+Author: Maha Ibrahim (@mahaibrahim26)
 
 Email: Maha.Ibrahim@stud.srh-campus-berlin.de 
        
