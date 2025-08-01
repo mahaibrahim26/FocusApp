@@ -34,9 +34,13 @@ mahasherif2604@gmail.com
 ##  Folder Structure
 
 lib/
+
 main.dart --> Single main file that contains all widgets
+
 assets/
+
 images/ --> seed1.png → seed5.png, logo.png
+
 fonts/ --> PlayfairDisplay-Black.ttf
 
 ---
