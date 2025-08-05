@@ -2,7 +2,29 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// MODEL
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const FocusTreeApp());
+}
+
+class FocusTreeApp extends StatelessWidget {
+  const FocusTreeApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Green Focus Timer',
+      theme: ThemeData(
+        primarySwatch: Colors.green,
+        scaffoldBackgroundColor: Colors.green[50],
+        fontFamily: 'Playfair',
+        textTheme: const TextTheme(bodyMedium: TextStyle(color: Colors.green)),
+      ),
+      home: const RootScreen(),
+    );
+  }
+}
+
 class Task {
   String title;
   String priority;
@@ -19,43 +41,16 @@ class Task {
       isDone: json['isDone'] ?? false);
 }
 
-void main() {
-  runApp(const FocusTreeApp());
-}
-
-// MAIN APP
-class FocusTreeApp extends StatelessWidget {
-  const FocusTreeApp({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Green Focus Timer',
-      theme: ThemeData(
-        primarySwatch: Colors.green,
-        scaffoldBackgroundColor: Colors.green[50],
-        fontFamily: 'Playfair', // Using your font from yaml
-        textTheme: const TextTheme(
-          bodyMedium: TextStyle(color: Colors.green),
-        ),
-      ),
-      home: const RootScreen(),
-    );
-  }
-}
-
-// ROOT with Bottom Navigation and Logo
 class RootScreen extends StatefulWidget {
   const RootScreen({super.key});
+
   @override
   State<RootScreen> createState() => _RootScreenState();
 }
 
 class _RootScreenState extends State<RootScreen> {
   int _selectedIndex = 0;
-
-  // Tasks shared between screens
   final List<Task> tasks = [];
-
   late SharedPreferences prefs;
 
   @override
@@ -70,8 +65,7 @@ class _RootScreenState extends State<RootScreen> {
     setState(() {
       tasks.clear();
       tasks.addAll(saved
-          .map((e) => Task.fromJson(
-          Map<String, dynamic>.from(Uri.splitQueryString(e))))
+          .map((e) => Task.fromJson(Map<String, dynamic>.from(Uri.splitQueryString(e))))
           .toList());
     });
   }
@@ -113,11 +107,8 @@ class _RootScreenState extends State<RootScreen> {
     });
   }
 
-  static const List<Widget> _screens = [];
-
   @override
   Widget build(BuildContext context) {
-    // Screen widgets passing tasks and handlers
     final List<Widget> screens = [
       TimerScreen(),
       TasksScreen(
@@ -133,41 +124,24 @@ class _RootScreenState extends State<RootScreen> {
       appBar: AppBar(
         backgroundColor: Colors.green[800],
         centerTitle: true,
-        title: Image.asset(
-          'assets/images/logo.png',
-          height: 160, // bigger size
-          width: 160,
-          fit: BoxFit.contain,
-        ),
+        title: Image.asset('assets/images/logo.png', height: 160, width: 160),
       ),
-
       body: screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _selectedIndex,
         selectedItemColor: Colors.green[900],
         unselectedItemColor: Colors.green[300],
         backgroundColor: Colors.green[50],
-        onTap: (index) {
-          setState(() {
-            _selectedIndex = index;
-          });
-        },
+        onTap: (index) => setState(() => _selectedIndex = index),
         items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.timer),
-            label: 'Timer',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.list_alt),
-            label: 'Tasks',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.timer), label: 'Timer'),
+          BottomNavigationBarItem(icon: Icon(Icons.list_alt), label: 'Tasks'),
         ],
       ),
     );
   }
 }
 
-// TIMER SCREEN
 class TimerScreen extends StatefulWidget {
   const TimerScreen({super.key});
 
@@ -175,239 +149,291 @@ class TimerScreen extends StatefulWidget {
   State<TimerScreen> createState() => _TimerScreenState();
 }
 
-class _TimerScreenState extends State<TimerScreen> {
-  int focusSeconds = 25 * 60;
-  int secondsLeft = 25 * 60;
-  Timer? timer;
+class _TimerScreenState extends State<TimerScreen> with SingleTickerProviderStateMixin {
   bool isRunning = false;
+  bool isPomodoro = false;
+  int remainingSeconds = 1500;
+  int totalSeconds = 1500;
+  Timer? timer;
+  final customController = TextEditingController();
+  late AnimationController orbitController;
 
-  int seedStage = 1; // 1 to 5
-
-  final focusTimeController = TextEditingController(text: '25');
-
-  void startTimer() {
-    if (isRunning) return;
-    setState(() => isRunning = true);
-    timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (secondsLeft == 0) {
-        timer?.cancel();
-        setState(() {
-          isRunning = false;
-          seedStage = 5;
-        });
-      } else {
-        setState(() {
-          secondsLeft--;
-          seedStage = ((1 + (4 * (focusSeconds - secondsLeft) / focusSeconds))
-              .clamp(1, 5))
-              .toInt();
-        });
-      }
-    });
-  }
-
-  void resetTimer() {
-    timer?.cancel();
-    setState(() {
-      secondsLeft = focusSeconds;
-      isRunning = false;
-      seedStage = 1;
-    });
-  }
-
-  String formatTime(int seconds) {
-    final m = seconds ~/ 60;
-    final s = seconds % 60;
-    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  @override
+  void initState() {
+    super.initState();
+    orbitController = AnimationController(
+      vsync: this,
+      duration: Duration(seconds: remainingSeconds),
+    );
   }
 
   @override
   void dispose() {
     timer?.cancel();
-    focusTimeController.dispose();
+    orbitController.dispose();
     super.dispose();
   }
 
-  String seedImage() => 'assets/images/seed$seedStage.png';
+  void startTimer() {
+    if (isRunning) return;
+    setState(() => isRunning = true);
+
+    orbitController.duration = Duration(seconds: totalSeconds);
+    orbitController.forward(from: 1 - (remainingSeconds / totalSeconds)); // ✅ syncs dot with time
+
+    timer = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (remainingSeconds == 0) {
+        stopTimer();
+      } else {
+        setState(() => remainingSeconds--);
+      }
+    });
+  }
+
+
+  void stopTimer() {
+    timer?.cancel();
+    orbitController.stop();
+    setState(() => isRunning = false);
+  }
+
+  void resetTimer() {
+    timer?.cancel();
+    orbitController.reset();
+    setState(() {
+      isRunning = false;
+      remainingSeconds = totalSeconds;
+    });
+  }
+
+  void togglePomodoro(bool value) {
+    setState(() {
+      isPomodoro = value;
+      totalSeconds = isPomodoro ? 1500 : 0;
+      remainingSeconds = totalSeconds;
+      orbitController.reset();
+      timer?.cancel();
+      isRunning = false;
+    });
+  }
+
+  void setCustomTime() {
+    final entered = int.tryParse(customController.text);
+    if (entered == null || entered <= 0) return;
+    setState(() {
+      totalSeconds = entered * 60;
+      remainingSeconds = totalSeconds;
+      orbitController.duration = Duration(seconds: totalSeconds);
+      orbitController.reset();
+      isRunning = false;
+      timer?.cancel();
+    });
+  }
+
+  String get seedImage {
+    double percent = remainingSeconds / totalSeconds;
+    if (percent > 0.8) return 'assets/images/seed1.png';
+    if (percent > 0.6) return 'assets/images/seed2.png';
+    if (percent > 0.4) return 'assets/images/seed3.png';
+    if (percent > 0.2) return 'assets/images/seed4.png';
+    return 'assets/images/seed5.png';
+  }
+
+  String formatTime(int seconds) {
+    final min = (seconds ~/ 60).toString().padLeft(2, '0');
+    final sec = (seconds % 60).toString().padLeft(2, '0');
+    return '$min:$sec';
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Card(
-          shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          color: Colors.green[100],
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  'Set Focus Time (minutes)',
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
-                    color: Colors.green,
-                  ),
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(children: [
+        SwitchListTile(
+          value: isPomodoro,
+          onChanged: togglePomodoro,
+          title: const Text("Pomodoro Mode"),
+          activeColor: Colors.green[800],
+        ),
+        if (!isPomodoro)
+          Row(children: [
+            Expanded(
+              child: TextField(
+                controller: customController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  hintText: 'Enter minutes...',
+                  filled: true,
+                  fillColor: Colors.green[50],
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                 ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: 100,
-                  child: TextField(
-                    controller: focusTimeController,
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      contentPadding:
-                      EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+              ),
+            ),
+            const SizedBox(width: 10),
+            ElevatedButton(
+              onPressed: () {
+                setCustomTime();
+                FocusScope.of(context).unfocus(); // ✅ This dismisses the keyboard
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green[700]),
+              child: const Text("Set"),
+            )
+
+          ]),
+        const SizedBox(height: 20),
+        Expanded(
+          child: Center(
+            child: SizedBox(
+              width: 260,
+              height: 260,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  AnimatedBuilder(
+                    animation: orbitController,
+                    builder: (context, child) => CustomPaint(
+                      size: const Size(260, 260),
+                      painter: OrbitPainter(orbitController.value),
                     ),
-                    onChanged: (val) {
-                      final parsed = int.tryParse(val);
-                      if (parsed != null && parsed > 0) {
-                        setState(() {
-                          focusSeconds = parsed * 60;
-                          secondsLeft = focusSeconds;
-                          seedStage = 1;
-                          resetTimer();
-                        });
-                      }
-                    },
                   ),
-                ),
-                const SizedBox(height: 20),
-                Image.asset(
-                  seedImage(),
-                  width: 120,
-                  height: 120,
-                  fit: BoxFit.contain,
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  formatTime(secondsLeft),
-                  style: const TextStyle(
-                    fontSize: 48,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.green,
+                  RotationTransition(
+                    turns: Tween<double>(begin: 0, end: 1).animate(orbitController),
+                    child: Transform.translate(
+                      offset: const Offset(0, -115),
+                      child: Container(
+                        width: 18,
+                        height: 18,
+                        decoration: const BoxDecoration(
+                          color: Colors.green,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ElevatedButton(
-                      onPressed: startTimer,
-                      style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green[700]),
-                      child: const Text('Start'),
-                    ),
-                    const SizedBox(width: 20),
-                    ElevatedButton(
-                      onPressed: resetTimer,
-                      style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green[400]),
-                      child: const Text('Reset'),
-                    ),
-                  ],
-                ),
-              ],
+                  Image.asset(seedImage, height: 180),
+                ],
+              ),
             ),
           ),
         ),
-      ),
+        const SizedBox(height: 16),
+        Text(formatTime(remainingSeconds),
+            style: const TextStyle(fontSize: 32, fontWeight: FontWeight.bold, color: Colors.green)),
+        const SizedBox(height: 20),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            ElevatedButton(onPressed: startTimer, style: ElevatedButton.styleFrom(backgroundColor: Colors.green[600]), child: const Text("Start")),
+            const SizedBox(width: 10),
+            ElevatedButton(onPressed: stopTimer, style: ElevatedButton.styleFrom(backgroundColor: Colors.orange[600]), child: const Text("Pause")),
+            const SizedBox(width: 10),
+            ElevatedButton(onPressed: resetTimer, style: ElevatedButton.styleFrom(backgroundColor: Colors.red[600]), child: const Text("Reset")),
+          ],
+        )
+      ]),
     );
   }
 }
 
-// TASKS SCREEN
-class TasksScreen extends StatefulWidget {
+class OrbitPainter extends CustomPainter {
+  final double progress;
+
+  OrbitPainter(this.progress);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint bgPaint = Paint()
+      ..color = Colors.green.shade100
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 6;
+
+    final Paint progressPaint = Paint()
+      ..color = Colors.green.shade800
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 6
+      ..strokeCap = StrokeCap.round;
+
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.width / 2 - 16;
+
+    canvas.drawCircle(center, radius, bgPaint);
+
+    final sweepAngle = 2 * 3.1415926535897932 * progress;
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius),
+      -3.1415926535897932 / 2,
+      sweepAngle,
+      false,
+      progressPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(CustomPainter oldDelegate) => true;
+}
+
+class TasksScreen extends StatelessWidget {
   final List<Task> tasks;
   final void Function(String) onAdd;
   final void Function(int, String) onUpdatePriority;
   final void Function(int, bool?) onToggleDone;
   final void Function(int) onDelete;
 
-  const TasksScreen({
-    super.key,
-    required this.tasks,
-    required this.onAdd,
-    required this.onUpdatePriority,
-    required this.onToggleDone,
-    required this.onDelete,
-  });
-
-  @override
-  State<TasksScreen> createState() => _TasksScreenState();
-}
-
-class _TasksScreenState extends State<TasksScreen> {
-  Color priorityColor(String priority) {
-    switch (priority) {
-      case 'High':
-        return Colors.redAccent.shade400;
-      case 'Medium':
-        return Colors.orangeAccent.shade400;
-      default:
-        return Colors.greenAccent.shade400;
-    }
-  }
-
-  final addController = TextEditingController();
-
-  @override
-  void dispose() {
-    addController.dispose();
-    super.dispose();
-  }
+  const TasksScreen({super.key, required this.tasks, required this.onAdd, required this.onUpdatePriority, required this.onToggleDone, required this.onDelete});
 
   @override
   Widget build(BuildContext context) {
+    final TextEditingController addController = TextEditingController();
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
         children: [
-          AddTaskWidget(
-            controller: addController,
-            onAdd: (val) {
-              widget.onAdd(val);
-              addController.clear();
-              FocusScope.of(context).unfocus();
-            },
-          ),
+          Row(children: [
+            Expanded(
+              child: TextField(
+                controller: addController,
+                decoration: InputDecoration(
+                  hintText: 'Add new task...',
+                  fillColor: Colors.green[50],
+                  filled: true,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            ElevatedButton(
+              onPressed: () {
+                onAdd(addController.text);
+                addController.clear();
+                FocusScope.of(context).unfocus();
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: Colors.green[700]),
+              child: const Icon(Icons.add),
+            ),
+          ]),
           const SizedBox(height: 16),
           Expanded(
-            child: widget.tasks.isEmpty
-                ? const Center(
-              child: Text(
-                'No tasks yet. Add one!',
-                style: TextStyle(color: Colors.green),
-              ),
-            )
+            child: tasks.isEmpty
+                ? const Center(child: Text('No tasks yet. Add one!', style: TextStyle(color: Colors.green)))
                 : ListView.builder(
-              itemCount: widget.tasks.length,
+              itemCount: tasks.length,
               itemBuilder: (context, index) {
-                final task = widget.tasks[index];
+                final task = tasks[index];
                 return Card(
-                  shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12)),
-                  color: task.isDone
-                      ? Colors.green[100]
-                      : priorityColor(task.priority).withOpacity(0.3),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  color: task.isDone ? Colors.green[100] : Colors.greenAccent.withOpacity(0.3),
                   margin: const EdgeInsets.symmetric(vertical: 6),
                   child: ListTile(
                     leading: Checkbox(
                       value: task.isDone,
-                      onChanged: (val) =>
-                          widget.onToggleDone(index, val),
+                      onChanged: (val) => onToggleDone(index, val),
                       activeColor: Colors.green[800],
                     ),
                     title: Text(
                       task.title,
                       style: TextStyle(
-                          decoration: task.isDone
-                              ? TextDecoration.lineThrough
-                              : null,
+                          decoration: task.isDone ? TextDecoration.lineThrough : null,
                           color: Colors.green[900],
                           fontWeight: FontWeight.w600),
                     ),
@@ -416,24 +442,13 @@ class _TasksScreenState extends State<TasksScreen> {
                       dropdownColor: Colors.green[50],
                       underline: const SizedBox(),
                       items: const [
-                        DropdownMenuItem(
-                            value: 'Low',
-                            child: Text('Low',
-                                style: TextStyle(color: Colors.green))),
-                        DropdownMenuItem(
-                            value: 'Medium',
-                            child: Text('Medium',
-                                style: TextStyle(color: Colors.orange))),
-                        DropdownMenuItem(
-                            value: 'High',
-                            child: Text('High',
-                                style: TextStyle(color: Colors.red))),
+                        DropdownMenuItem(value: 'Low', child: Text('Low', style: TextStyle(color: Colors.green))),
+                        DropdownMenuItem(value: 'Medium', child: Text('Medium', style: TextStyle(color: Colors.orange))),
+                        DropdownMenuItem(value: 'High', child: Text('High', style: TextStyle(color: Colors.red))),
                       ],
-                      onChanged: (val) {
-                        if (val != null) widget.onUpdatePriority(index, val);
-                      },
+                      onChanged: (val) => val != null ? onUpdatePriority(index, val) : null,
                     ),
-                    onLongPress: () => widget.onDelete(index),
+                    onLongPress: () => onDelete(index),
                   ),
                 );
               },
@@ -442,45 +457,5 @@ class _TasksScreenState extends State<TasksScreen> {
         ],
       ),
     );
-  }
-}
-
-// Add Task Input
-class AddTaskWidget extends StatelessWidget {
-  final void Function(String) onAdd;
-  final TextEditingController controller;
-
-  const AddTaskWidget({
-    super.key,
-    required this.onAdd,
-    required this.controller,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(children: [
-      Expanded(
-        child: TextField(
-          controller: controller,
-          decoration: InputDecoration(
-            hintText: 'Add new task...',
-            fillColor: Colors.green[50],
-            filled: true,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide.none,
-            ),
-          ),
-        ),
-      ),
-      const SizedBox(width: 12),
-      ElevatedButton(
-        onPressed: () {
-          onAdd(controller.text);
-        },
-        style: ElevatedButton.styleFrom(backgroundColor: Colors.green[700]),
-        child: const Icon(Icons.add),
-      ),
-    ]);
   }
 }
